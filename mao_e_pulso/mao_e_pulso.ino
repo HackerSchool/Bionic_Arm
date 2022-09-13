@@ -1,11 +1,27 @@
+/**
+ * @file mao_e_pulso.ino
+ * @author carmen e joão
+ * @brief Um braço biónico que usa os pin's desde do número 6 até 10 para poder 
+ *        controlar um braço biónico de um arduino nano. A maneira como ele 
+ *        corre é através de interrupts, sendo que dado um sinal, idealmente 
+ *        por um cartão, ele iria mover-se entre pedra, papel ou tesoura de 
+ *        forma aleatória. Este projeto é muito usado em bancas, então 
+ *        mantenção pode ser necessária para o seu operacionamento.
+ * @version 0.1
+ * @date long long time ago, in a nucleus far away
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
+
 #include <Servo.h>
 #include <Wire.h>
 
-#define NUM_MOV 6 //número de movimentos conhecidos
+#define NUM_MOV 5 //número de movimentos conhecidos
 #define ANGULO_MAX 60 //ângulo máximo de compressão do fio
 #define ANGULO_MIN 0  //ângulo de à vontade
 #define ANGULO_MAX_P 180 //ângulo máximo de compressão do fio
-#define SERVO_POS_UM 6  //pin do primeiro servo, os outros vêm de seguida, logo, SERVO_POS_UM = [1, 9]
+#define SERVO_POS_UM 0  //pin do primeiro servo, os outros vêm de seguida, logo, SERVO_POS_UM = [1, 9]
 #define DELAY 0 //tempo de espera para rotacao dos servos
 #define ENDERECO 8  //linha de informação de master-slave
 
@@ -22,44 +38,48 @@ typedef struct {
   int pulso;
 } MAO;
 
+// polegar, indicador, medio, anelar, mindinho, pulso
+int pwm_pins[6] = {3,5,6,9,10,11};
+
 // declarações de variáveis globais
 MAO mao;  //estrura que contem os dedos da mao
-vect_funcoes_void vect_movimentos_mao[NUM_MOV] = {&descanso, &pedra, &papel, &tesoura, &carmen, &joao};  //vetor com funções que representão os movimentos conhecidos
+//vetor com funções que representão os movimentos conhecidos
+vect_funcoes_void vect_movimentos_mao[NUM_MOV] = {&descanso, &pedra, &papel, &tesoura, &carmen}; 
 Servo s_polegar, s_indicador, s_medio, s_anelar, s_mindinho, s_pulso;
 int *movimento = 0;
 
 // movimentos conhecidos
 void pedra() {
-  angulos_mao(ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX_P / 2);
+  angulos_mao(ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, 0);
   Serial.println("pedra");
 }
 void papel() {
-  angulos_mao(ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MAX_P / 2);
+  angulos_mao(ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, 0);
   Serial.println("papel");
 }
 void tesoura() {
-  angulos_mao(ANGULO_MAX, ANGULO_MIN, ANGULO_MIN, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX_P / 2);
+  angulos_mao(ANGULO_MAX, ANGULO_MIN, ANGULO_MIN, ANGULO_MAX, ANGULO_MAX, 0);
   Serial.println("tesoura");
 }
 void descanso() {
-  angulos_mao(ANGULO_MAX / 2, ANGULO_MAX / 2, ANGULO_MAX / 2, ANGULO_MAX / 2, ANGULO_MAX / 2, ANGULO_MAX_P / 2);
+  angulos_mao(ANGULO_MAX / 2, ANGULO_MAX / 2, ANGULO_MAX / 2, ANGULO_MAX / 2, ANGULO_MAX / 2, 0);
   Serial.println("descnaso");
 }
 void carmen() {
   for (int j = 0; j < 5; j++) {
-    angulos_mao(ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX_P / 2);
-    angulos_mao(ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MAX_P / 2);
+    angulos_mao(ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, 0);
+    angulos_mao(ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, 0);
     Serial.println("carmen");
   }
 }
-void joao() {
+/*void joao() {
   for (int j = 0; j < 5; j++) {
-    angulos_mao(ANGULO_MAX, ANGULO_MIN, ANGULO_MIN, ANGULO_MAX, ANGULO_MIN, ANGULO_MIN);
-    angulos_mao(ANGULO_MAX, ANGULO_MIN, ANGULO_MIN, ANGULO_MAX, ANGULO_MIN, ANGULO_MAX_P);
+    angulos_mao(ANGULO_MAX, ANGULO_MIN, ANGULO_MIN, ANGULO_MAX, ANGULO_MIN);
+    angulos_mao(ANGULO_MAX, ANGULO_MIN, ANGULO_MIN, ANGULO_MAX, ANGULO_MIN);
   }
-  angulos_mao(ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MAX_P / 2);
+  //angulos_mao(ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN, ANGULO_MIN);
   Serial.println("joao");
-}
+}*/
 
 
 //funções auxiliares
@@ -100,7 +120,7 @@ int max_value(int p, int i, int M, int a, int m, int P) {
 
 }
 void init_mao() {
-
+  // papel, descanso, papel
   vect_movimentos_mao[2]();
   vect_movimentos_mao[0]();
   vect_movimentos_mao[2]();
@@ -147,12 +167,12 @@ void attach_servos() {
     s_indicador.attach(SERVO_POS_UM + 1, ANGULO_MIN, ANGULO_MAX);
     s_medio.attach(SERVO_POS_UM + 2, ANGULO_MIN, ANGULO_MAX);*/
 
-  s_polegar.attach(SERVO_POS_UM);
-  s_indicador.attach(SERVO_POS_UM + 1);
-  s_medio.attach(SERVO_POS_UM + 2);
-  s_anelar.attach(SERVO_POS_UM + 3);
-  s_mindinho.attach(SERVO_POS_UM + 4);
-  s_pulso.attach(SERVO_POS_UM + 5);
+  s_polegar.attach(pwm_pins[SERVO_POS_UM]);
+  s_indicador.attach(pwm_pins[SERVO_POS_UM + 1]);
+  s_medio.attach(pwm_pins[SERVO_POS_UM + 2]);
+  s_anelar.attach(pwm_pins[SERVO_POS_UM + 3]);
+  s_mindinho.attach(pwm_pins[SERVO_POS_UM + 4]);
+  s_pulso.attach(pwm_pins[SERVO_POS_UM + 5]);
 }
 void detach_servos() {
   s_polegar.detach();
@@ -196,9 +216,9 @@ void receiveEvent(int howMany) {
 }
 
 void setup() {
-  Wire.begin(ENDERECO);
-
-  Wire.onReceive(receiveEvent);
+  //Wire.begin(ENDERECO);
+  //Wire.onReceive(receiveEvent);
+  
   Serial.begin(9600);
 
   attach_servos();
@@ -209,7 +229,37 @@ void setup() {
 
 }
 
+void pulso_up(){
+  angulos_mao(ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, 180);
+  delay(15);
+}
+
+void pulso_down() {
+  angulos_mao(ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, ANGULO_MAX, 0);
+  delay(15);  
+}
+
 void loop() {
+  if (Serial.available()>0)
+  {
+    int byteReceived = Serial.read();
+    if (byteReceived == 0)
+    {
+      pulso_up(); delay(250); pulso_down(); delay(100);
+      pulso_up(); delay(250); pulso_down(); delay(100);
+      pulso_up(); delay(125);
+
+      switch (random(3))
+      {
+        case 0: pedra(); break;
+        case 1: papel(); break;
+        case 2: tesoura(); break;
+        default: break;
+      }
+    }
+    
+
+  }
 
 
 }
